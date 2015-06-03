@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from mpl_toolkits.basemap import Basemap
 import matplotlib.colors as colors
 #from colormaps import khcm
+import os
 
 def from_ascii(filename, name):
     palette = open(filename)
@@ -32,9 +33,9 @@ def grayify_cmap(cmap):
 
     return cmap.from_list(cmap.name + "_grayscale", colors, cmap.N)
 
-
-from_ascii("kh_cm.txt", 'kh_cm')
-hemisxy = np.load('nhemispheric_mosaic.npz')
+path = '/data/soundings/blumberg/programs/hemis_wv/'
+from_ascii(path + "kh_cm.txt", 'kh_cm')
+hemisxy = np.load(path + 'nhemispheric_mosaic.npz')
 m = Basemap(projection='npstere', lat_0=60.,lat_ts=30.,  boundinglat=0, lon_0=-105., area_thresh=1000., k_0=.933)
 cmap = grayify_cmap(plt.get_cmap('afmhot'))
 cmap.set_bad('black', 1)
@@ -43,7 +44,8 @@ cmap.set_bad('black', 1)
 now = datetime.utcnow()
 i = 0
 no_imgs = 48
-sat_type = sys.argv[1]
+#sat_type = sys.argv[1]
+sat_type = "WV"
 now = now - timedelta(hours = now.hour % 3.)
 last_sat_img_string = datetime.strftime(now, '%Y%m%d_%H00')
  
@@ -51,18 +53,17 @@ while i < no_imgs:
     data_link = 'http://motherlode.ucar.edu/thredds/dodsC/satellite/' + sat_type + '/NHEM-MULTICOMP_1km/current/NHEM-MULTICOMP_1km_' + sat_type + '_' + last_sat_img_string + '.gini'
     
     try:
-        #data = Nio.open_file(data_link)
-        data = open_url(data_link)
+        data = Nio.open_file(data_link)
     except Exception,e:
         print e
+        print "HI, I'M IN AN EXCEPTION."
         now = now - timedelta(hours = 3.)
         last_sat_img_string = datetime.strftime(now, '%Y%m%d_%H00')       
         continue
     print data
     print "Drawing for: ", last_sat_img_string
-    print data["IR_WV"][:]
-    data_length = a.variables['IR_WV'].shape[1]
-    wv = np.vstack((a.variables['IR_WV'][0,0:data_length -1,:], a.variables['IR_WV'][0,data_length,:]))
+    data_length = data.variables['IR_WV'].shape[1]
+    wv = np.vstack((data.variables['IR_WV'][0,0:data_length -1,:], data.variables['IR_WV'][0,data_length,:]))
     my_dpi = 96
     
     plt.figure(figsize=(1000/my_dpi, 900/my_dpi), dpi=my_dpi)
@@ -82,10 +83,12 @@ while i < no_imgs:
     plt.text(0.5, .98, 'Hemispheric Water Vapor (Imager 6.7/6.5 micron IR WV) Mosaic for ' + datetime.strftime(now, '%Y/%m/%d %H00 UTC'), transform=plt.gca().transAxes,horizontalalignment='center', bbox=dict(facecolor='white', alpha=0.7))
     plt.text(0,0, "Made by Greg Blumberg (wblumberg@ou.edu)", fontsize=10, transform=plt.gca().transAxes, color='yellow')
     plt.tight_layout()
-    plt.savefig('wvhemis_' + str(i) + '.png', bbox_inches='tight', pad_inches=0)
+    plt.savefig(path + 'wvhemis_' + str(i) + '.png', bbox_inches='tight', pad_inches=0)
     #plt.show()
     plt.close()
     i += 1
 
     now = now - timedelta(hours = 3.)
     last_sat_img_string = datetime.strftime(now, '%Y%m%d_%H00')
+
+os.system('/usr/bin/mv /data/soundings/blumberg/programs/hemis_wv/*.png /data/soundings/http/blumberg/')
